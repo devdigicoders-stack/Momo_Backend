@@ -64,28 +64,42 @@ exports.getNotifications = async (req, res) => {
 };
 
 /**
- * @desc Mark all notifications as read for current user
- * @route POST /api/notifications/mark-read
+ * @desc Send a live Test Push Notification to the calling user or all admins
+ * @route POST /api/notifications/test
  */
-exports.markAllAsRead = async (req, res) => {
+exports.sendTestNotification = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const { sendNotification } = require('../services/notification.service');
+    const { title, message } = req.body;
 
-    await Notification.updateMany(
-      { readBy: { $ne: userId } },
-      { $addToSet: { readBy: userId } }
-    );
+    const notif = await sendNotification({
+      title: title || '⚡ Live Push Notification Test',
+      message: message || `This is a test push notification sent to ${req.user.name} (${req.user.role}) at ${new Date().toLocaleTimeString()}`,
+      category: 'SYSTEM',
+      type: 'info',
+      targetUsers: [req.user._id],
+      targetRoles: [req.user.role],
+      data: {
+        screen: 'NOTIFICATIONS',
+        timestamp: new Date().toISOString(),
+      },
+      createdBy: req.user._id,
+    });
 
-    res.status(200).json({
+    const userWithTokens = await require('../models/User').User.findById(req.user._id).select('fcmTokens name email role');
+
+    return res.status(200).json({
       success: true,
-      message: 'All notifications marked as read',
+      message: 'Test notification triggered successfully',
+      registeredTokensCount: userWithTokens?.fcmTokens?.length || 0,
+      userTokens: userWithTokens?.fcmTokens || [],
+      notification: notif,
     });
   } catch (error) {
-    console.error('markAllAsRead error:', error);
-    res.status(500).json({
+    console.error('sendTestNotification error:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to mark notifications as read',
-      error: error.message,
+      message: 'Failed to send test notification: ' + error.message,
     });
   }
 };

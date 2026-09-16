@@ -6,7 +6,8 @@ const { User, ROLES } = require('../models/User');
 // @access  Private / SUPER_ADMIN
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    const filter = req.user?._id ? { _id: { $ne: req.user._id } } : {};
+    const users = await User.find(filter).sort({ createdAt: -1 });
     return res.status(200).json({
       success: true,
       count: users.length,

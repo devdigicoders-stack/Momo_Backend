@@ -64,6 +64,33 @@ exports.getNotifications = async (req, res) => {
 };
 
 /**
+ * @desc Mark all notifications as read for current user
+ * @route POST /api/notifications/mark-read
+ */
+exports.markAllAsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    await Notification.updateMany(
+      { readBy: { $ne: userId } },
+      { $addToSet: { readBy: userId } }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'All notifications marked as read',
+    });
+  } catch (error) {
+    console.error('markAllAsRead error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark notifications as read',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * @desc Send a live Test Push Notification to the calling user or all admins
  * @route POST /api/notifications/test
  */

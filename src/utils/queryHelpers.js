@@ -36,8 +36,12 @@ const buildDateFilter = (preset, fromDate, toDate) => {
     return { $gte: start, $lte: end };
   }
 
+  if (preset === 'all' || preset === 'ALL') {
+    return null;
+  }
+
   // If preset is passed a specific date string (e.g. YYYY-MM-DD)
-  if (preset && !['today', 'yesterday', 'this_week', 'custom', 'ALL'].includes(preset)) {
+  if (preset && !['today', 'yesterday', 'this_week', 'custom', 'all', 'ALL'].includes(preset)) {
     const parsedDate = new Date(preset);
     if (!isNaN(parsedDate.getTime())) {
       const start = new Date(parsedDate);

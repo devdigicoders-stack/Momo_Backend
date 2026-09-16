@@ -15,7 +15,7 @@ const { apply45DayQueryLimit } = require('../middleware/accessControl.middleware
 exports.getDashboardSummary = async (req, res) => {
   try {
     const role = req.user.role;
-    const { date, datePreset = 'today', fromDate, toDate } = req.query;
+    const { date, datePreset = 'all', fromDate, toDate } = req.query;
 
     // Build date filter
     let dateFilter;
@@ -45,13 +45,13 @@ exports.getDashboardSummary = async (req, res) => {
         await Promise.all([
           ChefRequirement.countDocuments(chefQuery),
           ChefRequirement.countDocuments(myChefQuery),
-          ChefRequirement.countDocuments({ ...myChefQuery, status: 'PENDING' }),
-          ChefRequirement.countDocuments({ ...myChefQuery, status: 'APPROVED' }),
+          ChefRequirement.countDocuments({ ...myChefQuery, status: { $in: ['Pending', 'PENDING'] } }),
+          ChefRequirement.countDocuments({ ...myChefQuery, status: { $in: ['Approved', 'APPROVED'] } }),
           ChefRequirement.countDocuments({
             ...myChefQuery,
-            status: { $in: ['PURCHASED', 'COMPLETED'] },
+            status: { $in: ['Purchased', 'PURCHASED', 'Completed', 'COMPLETED'] },
           }),
-          ChefRequirement.countDocuments({ ...myChefQuery, status: 'REJECTED' }),
+          ChefRequirement.countDocuments({ ...myChefQuery, status: { $in: ['Rejected', 'REJECTED'] } }),
         ]);
 
       return res.status(200).json({
@@ -183,13 +183,13 @@ exports.getDashboardSummary = async (req, res) => {
     // Chef Requirement Counts
     const chefReqsPromise = Promise.all([
       ChefRequirement.countDocuments(query),
-      ChefRequirement.countDocuments({ ...query, status: 'PENDING' }),
-      ChefRequirement.countDocuments({ ...query, status: 'APPROVED' }),
+      ChefRequirement.countDocuments({ ...query, status: { $in: ['Pending', 'PENDING'] } }),
+      ChefRequirement.countDocuments({ ...query, status: { $in: ['Approved', 'APPROVED'] } }),
       ChefRequirement.countDocuments({
         ...query,
-        status: { $in: ['PURCHASED', 'COMPLETED'] },
+        status: { $in: ['Purchased', 'PURCHASED', 'Completed', 'COMPLETED'] },
       }),
-      ChefRequirement.countDocuments({ ...query, status: 'REJECTED' }),
+      ChefRequirement.countDocuments({ ...query, status: { $in: ['Rejected', 'REJECTED'] } }),
     ]);
 
     // Employee Counts

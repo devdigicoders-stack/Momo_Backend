@@ -20,7 +20,7 @@ const startServer = async () => {
     // 3. Start Listening
     app.listen(PORT, () => {
       console.log(`==================================================`);
-      console.log(`🚀 Momos Bhandar Server running on port ${PORT}`);
+      console.log(`🚀 RK Food Ventures Server running on port ${PORT}`);
       console.log(`📡 URL: http://localhost:${PORT}`);
       console.log(`⚡ Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`==================================================`);

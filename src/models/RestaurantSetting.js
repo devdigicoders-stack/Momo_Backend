@@ -5,7 +5,7 @@ const restaurantSettingSchema = new mongoose.Schema(
     restaurantName: {
       type: String,
       required: true,
-      default: 'Momos Bhandar',
+      default: 'RK Food Ventures',
       trim: true,
     },
     tagline: {
@@ -20,7 +20,7 @@ const restaurantSettingSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      default: 'info@momosbhandar.com',
+      default: 'info@rkfoodventures.com',
       trim: true,
     },
     address: {
@@ -65,7 +65,7 @@ const restaurantSettingSchema = new mongoose.Schema(
     },
     billFooterNote: {
       type: String,
-      default: 'Thank you for dining with Momos Bhandar! Visit Again.',
+      default: 'Thank you for dining with RK Food Ventures! Visit Again.',
       trim: true,
     },
     updatedBy: {

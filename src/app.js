@@ -55,7 +55,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Momos Bhandar Backend API is up and running',
+    message: 'RK Food Ventures Backend API is up and running',
     timestamp: new Date().toISOString()
   });
 });

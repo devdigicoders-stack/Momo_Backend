@@ -287,7 +287,7 @@ exports.getAdditionalCashList = async (req, res) => {
     let queryFilter = { status: 'ACTIVE' };
 
     const dateFilter = buildDateFilter(date, startDate, endDate);
-    if (Object.keys(dateFilter).length > 0) {
+    if (dateFilter && Object.keys(dateFilter).length > 0) {
       queryFilter = { ...queryFilter, ...dateFilter };
     }
 
@@ -518,7 +518,7 @@ exports.getCashDepositList = async (req, res) => {
     let queryFilter = { status: 'ACTIVE' };
 
     const dateFilter = buildDateFilter(date, startDate, endDate);
-    if (Object.keys(dateFilter).length > 0) {
+    if (dateFilter && Object.keys(dateFilter).length > 0) {
       queryFilter = { ...queryFilter, ...dateFilter };
     }
 
@@ -685,7 +685,7 @@ exports.getUnifiedTransactions = async (req, res) => {
     const dateFilter = buildDateFilter(date, startDate, endDate);
 
     let baseFilter = {};
-    if (Object.keys(dateFilter).length > 0) {
+    if (dateFilter && typeof dateFilter === 'object' && Object.keys(dateFilter).length > 0) {
       baseFilter = { ...dateFilter };
     }
 
@@ -761,7 +761,7 @@ exports.getUnifiedTransactions = async (req, res) => {
               category: i.category,
               flow: 'OUT',
               amount: i.amount,
-              summary: i.itemOrDetails || i.category,
+              summary: i.item || i.remarks || i.category,
               details: `Subcategory: ${i.subcategory || 'General'} | Paid: Cash`,
               entryCode: i.entryCode || `EXP-${i._id.toString().substring(18)}`,
               enteredBy: i.enteredBy,

@@ -1,5 +1,6 @@
 const ChefRequirement = require('../models/ChefRequirement');
 const Notification = require('../models/Notification');
+const { sendNotification } = require('../services/notification.service');
 const { buildDateFilter, getPagination } = require('../utils/queryHelpers');
 const { generateEntryCode } = require('../utils/entryCode');
 const { logAudit } = require('../utils/auditLogger');
@@ -77,12 +78,19 @@ exports.createRequirement = async (req, res) => {
       'name email mobile role'
     );
 
-    // Create In-App Notification for Managers
-    await Notification.create({
+    // Create In-App Notification and FCM Push for Managers
+    await sendNotification({
       title: 'New Chef Requirement',
       message: `${req.user.name} requested ${qty} ${unit || 'KG'} ${itemName.trim()} (Priority: ${priority || 'Medium'})`,
       type: priority === 'Urgent' || priority === 'High' ? 'warning' : 'info',
+      category: 'CHEF_REQUIREMENT',
       targetRoles: ['SUPER_ADMIN', 'MAIN_MANAGER', 'MANAGER_2'],
+      referenceId: requirement._id,
+      data: {
+        category: 'CHEF_REQUIREMENT',
+        requirementId: requirement._id,
+        screen: 'Kitchen Demands',
+      },
       createdBy: req.user._id,
     });
 
@@ -372,6 +380,29 @@ exports.updateRequirementStatus = async (req, res) => {
       updatedData: { status },
       reason: `Status changed to ${status}`,
     });
+
+    // Notify specifically and ONLY the chef who requested it (Zero data leakage)
+    if (requirement.enteredBy) {
+      try {
+        await sendNotification({
+          title: `Requirement ${status}`,
+          message: `Your request for ${requirement.quantity} ${requirement.unit} ${requirement.itemName} has been marked as ${status} by ${req.user.name}.`,
+          type: status === 'Approved' ? 'success' : (status === 'Rejected' ? 'danger' : 'info'),
+          category: 'CHEF_REQUIREMENT',
+          targetUsers: [requirement.enteredBy],
+          referenceId: requirement._id,
+          data: {
+            category: 'CHEF_REQUIREMENT',
+            requirementId: requirement._id,
+            status,
+            screen: 'Kitchen Demands',
+          },
+          createdBy: req.user._id,
+        });
+      } catch (notifErr) {
+        console.error('Notification creation error:', notifErr);
+      }
+    }
 
     const updated = await ChefRequirement.findById(requirement._id).populate(
       'enteredBy',

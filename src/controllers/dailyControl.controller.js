@@ -7,6 +7,7 @@ const AdditionalCash = require('../models/AdditionalCash');
 const CashDeposit = require('../models/CashDeposit');
 const ChefRequirement = require('../models/ChefRequirement');
 const Notification = require('../models/Notification');
+const { sendNotification } = require('../services/notification.service');
 const { formatDateStr } = require('../middleware/dateLock.middleware');
 
 // Helper to get start and end of day in UTC
@@ -189,11 +190,19 @@ exports.toggleDailyStatus = async (req, res) => {
     await dailyStatus.save();
     await dailyStatus.populate('completedBy', 'name role');
 
-    // Create In-App Notification
-    await Notification.create({
+    // Create In-App Notification and FCM Push
+    await sendNotification({
       title: `Daily Status Updated (${dateStr})`,
       message: `${dateStr} marked as ${targetStatus} by ${req.user.name} (${req.user.role})`,
       type: targetStatus === 'COMPLETED' ? 'success' : 'info',
+      category: 'LOCK',
+      targetRoles: ['SUPER_ADMIN', 'MAIN_MANAGER', 'MANAGER_2'],
+      data: {
+        category: 'LOCK',
+        date: dateStr,
+        status: targetStatus,
+        screen: 'Daily Control',
+      },
       createdBy: req.user._id,
     });
 
@@ -213,17 +222,21 @@ exports.toggleDailyStatus = async (req, res) => {
 };
 
 /**
- * @desc Lock or Unlock a date (SUPER_ADMIN only)
- * @route POST /api/daily-control/toggle-lock
+ * @desc Lock/Unlock Date for Operational Editing (Super Admin Only)
+ * @route POST /api/daily-control/lock
  */
 exports.toggleDateLock = async (req, res) => {
   try {
     const { date, lock, notes } = req.body;
+
     if (!date) {
-      return res.status(400).json({ success: false, message: 'Date is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required (YYYY-MM-DD)',
+      });
     }
 
-    const dateStr = formatDateStr(date);
+    const dateStr = date.trim();
     let dailyStatus = await DailyStatus.findOne({ date: dateStr });
 
     const shouldLock = lock !== undefined ? Boolean(lock) : dailyStatus?.status !== 'LOCKED';
@@ -247,13 +260,21 @@ exports.toggleDateLock = async (req, res) => {
     await dailyStatus.save();
     await dailyStatus.populate('lockedBy', 'name role');
 
-    // Create In-App Notification
-    await Notification.create({
+    // Create In-App Notification and FCM Push
+    await sendNotification({
       title: shouldLock ? `Date Locked (${dateStr})` : `Date Unlocked (${dateStr})`,
       message: shouldLock
         ? `Entries for ${dateStr} have been LOCKED by Super Admin (${req.user.name}).`
         : `Entries for ${dateStr} have been UNLOCKED for operational editing.`,
       type: shouldLock ? 'lock' : 'info',
+      category: 'LOCK',
+      targetRoles: ['SUPER_ADMIN', 'MAIN_MANAGER', 'MANAGER_2'],
+      data: {
+        category: 'LOCK',
+        date: dateStr,
+        status: targetStatus,
+        screen: 'Daily Control',
+      },
       createdBy: req.user._id,
     });
 

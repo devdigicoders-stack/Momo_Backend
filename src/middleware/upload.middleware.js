@@ -65,7 +65,30 @@ const uploadBill = multer({
   fileFilter,
 });
 
+// Storage for User Profile Avatars
+const avatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../../uploads/avatars');
+    ensureDir(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `avatar-${uniqueSuffix}${ext}`);
+  },
+});
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB max
+  },
+  fileFilter,
+});
+
 module.exports = {
   uploadDepositSlip,
   uploadBill,
+  uploadAvatar,
 };

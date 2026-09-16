@@ -2,6 +2,7 @@ const Notification = require('../models/Notification');
 
 /**
  * @desc Get Notifications for logged-in user
+ * Ensures strict role isolation: user only receives what belongs to their role or direct user ID
  * @route GET /api/notifications
  */
 exports.getNotifications = async (req, res) => {
@@ -9,16 +10,34 @@ exports.getNotifications = async (req, res) => {
     const userRole = req.user.role;
     const userId = req.user._id;
 
-    const notifications = await Notification.find({
+    const filter = {
       $or: [
-        { targetRoles: 'ALL' },
-        { targetRoles: userRole },
-        { targetRoles: { $exists: false } },
-        { targetRoles: { $size: 0 } },
+        { targetUsers: userId },
+        {
+          $and: [
+            {
+              $or: [
+                { targetUsers: { $exists: false } },
+                { targetUsers: { $size: 0 } },
+                { targetUsers: null },
+              ],
+            },
+            {
+              $or: [
+                { targetRoles: 'ALL' },
+                { targetRoles: userRole },
+                { targetRoles: { $size: 0 } },
+                { targetRoles: { $exists: false } },
+              ],
+            },
+          ],
+        },
       ],
-    })
+    };
+
+    const notifications = await Notification.find(filter)
       .sort({ createdAt: -1 })
-      .limit(30)
+      .limit(50)
       .populate('createdBy', 'name role')
       .lean();
 

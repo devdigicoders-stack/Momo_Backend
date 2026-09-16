@@ -36,19 +36,37 @@ const buildDateFilter = (preset, fromDate, toDate) => {
     return { $gte: start, $lte: end };
   }
 
+  // If preset is passed a specific date string (e.g. YYYY-MM-DD)
+  if (preset && !['today', 'yesterday', 'this_week', 'custom', 'ALL'].includes(preset)) {
+    const parsedDate = new Date(preset);
+    if (!isNaN(parsedDate.getTime())) {
+      const start = new Date(parsedDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(parsedDate);
+      end.setHours(23, 59, 59, 999);
+      return { $gte: start, $lte: end };
+    }
+  }
+
   if (fromDate || toDate) {
     const filter = {};
     if (fromDate) {
       const start = new Date(fromDate);
-      start.setHours(0, 0, 0, 0);
-      filter.$gte = start;
+      if (!isNaN(start.getTime())) {
+        start.setHours(0, 0, 0, 0);
+        filter.$gte = start;
+      }
     }
     if (toDate) {
       const end = new Date(toDate);
-      end.setHours(23, 59, 59, 999);
-      filter.$lte = end;
+      if (!isNaN(end.getTime())) {
+        end.setHours(23, 59, 59, 999);
+        filter.$lte = end;
+      }
     }
-    return filter;
+    if (Object.keys(filter).length > 0) {
+      return filter;
+    }
   }
 
   return null;

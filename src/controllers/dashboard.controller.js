@@ -142,22 +142,22 @@ exports.getDashboardSummary = async (req, res) => {
     // Cash Calculations
     const cashSalesPromise = Sales.aggregate([
       { $match: { ...query, paymentMode: 'Cash' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
 
     const additionalCashPromise = AdditionalCash.aggregate([
       { $match: { ...query, status: 'ACTIVE' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
 
     const cashExpensesPromise = Expense.aggregate([
       { $match: { ...query, paymentMode: 'Cash' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
 
     const cashDepositsPromise = CashDeposit.aggregate([
       { $match: { ...query, status: 'ACTIVE' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
     ]);
 
     // All-time Available Cash calculation
@@ -263,6 +263,12 @@ exports.getDashboardSummary = async (req, res) => {
     const allOutflow = (allExp[0]?.total || 0) + (allDep[0]?.total || 0);
     const liveAvailableCash = Math.max(0, allInflow - allOutflow);
 
+    const totalCashLogs =
+      (cashSalesAgg[0]?.count || 0) +
+      (additionalCashAgg[0]?.count || 0) +
+      (cashExpensesAgg[0]?.count || 0) +
+      (cashDepositsAgg[0]?.count || 0);
+
     const cashSummary = {
       cashCollection: periodCashCollection,
       additionalCash: periodAdditionalCash,
@@ -270,6 +276,12 @@ exports.getDashboardSummary = async (req, res) => {
       cashDeposit: periodCashDeposits,
       netCashChange: periodCashCollection + periodAdditionalCash - periodCashExpenses - periodCashDeposits,
       availableCash: liveAvailableCash,
+      // Backward compatibility aliases for dashboard widgets
+      opening: periodCashCollection,
+      received: periodAdditionalCash,
+      paid: periodCashExpenses,
+      closing: liveAvailableCash,
+      count: totalCashLogs,
     };
 
     // Basic Operating Difference = Sales - Expenses - Momo Purchase

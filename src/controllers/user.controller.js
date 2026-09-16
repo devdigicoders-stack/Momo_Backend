@@ -211,15 +211,15 @@ const updateUser = async (req, res) => {
       user.isActive = isActive;
     }
 
-    if (password && password.trim() !== '') {
-      if (password.length < 6) {
+    if (password && String(password).trim() !== '') {
+      const cleanPassword = String(password).trim();
+      if (cleanPassword.length < 6) {
         return res.status(400).json({
           success: false,
           message: 'Password must be at least 6 characters long'
         });
       }
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
+      user.password = cleanPassword;
     }
 
     await user.save();

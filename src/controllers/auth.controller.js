@@ -15,24 +15,25 @@ const generateToken = (userId, role) => {
 // @access  Public
 const login = async (req, res) => {
   try {
-    const { email, mobile, password } = req.body;
+    const { email, mobile, username, password } = req.body;
 
-    const identifier = email || mobile;
+    const identifier = email || mobile || username;
 
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide both email/mobile and password'
+        message: 'Please provide both email/mobile/username and password'
       });
     }
 
     const cleanIdentifier = String(identifier).trim().toLowerCase();
 
-    // Find user by email OR mobile
+    // Find user by email, mobile, or username
     const user = await User.findOne({
       $or: [
         { email: cleanIdentifier },
-        { mobile: cleanIdentifier }
+        { mobile: cleanIdentifier },
+        { username: cleanIdentifier }
       ]
     });
 
@@ -60,6 +61,22 @@ const login = async (req, res) => {
       });
     }
 
+    // Role validation if role specified
+    const requestedRole = req.body.role || req.body.requiredRole;
+    if (requestedRole && user.role !== requestedRole) {
+      const formatRole = (r) => {
+        if (r === 'SUPER_ADMIN') return 'Super Admin';
+        if (r === 'MAIN_MANAGER') return 'Main Manager';
+        if (r === 'MANAGER_2') return 'Manager 2';
+        if (r === 'CHEF') return 'Chef';
+        return r.replace('_', ' ');
+      };
+      return res.status(403).json({
+        success: false,
+        message: `Unauthorized role: Your account is registered as '${formatRole(user.role)}', not '${formatRole(requestedRole)}'. Please select the '${formatRole(user.role)}' tab.`
+      });
+    }
+
     const token = generateToken(user._id, user.role);
 
     return res.status(200).json({
@@ -72,7 +89,8 @@ const login = async (req, res) => {
         email: user.email,
         mobile: user.mobile,
         role: user.role,
-        isActive: user.isActive
+        isActive: user.isActive,
+        profileImage: user.profileImage || null
       }
     });
   } catch (error) {
@@ -106,6 +124,7 @@ const getMe = async (req, res) => {
         mobile: user.mobile,
         role: user.role,
         isActive: user.isActive,
+        profileImage: user.profileImage || null,
         createdAt: user.createdAt
       }
     });
@@ -117,7 +136,7 @@ const getMe = async (req, res) => {
   }
 };
 
-// @desc    Update current logged in user profile (name, mobile)
+// @desc    Update current logged in user profile (name, mobile, avatar)
 // @route   PUT /api/auth/profile
 // @access  Private (All Roles)
 const updateProfile = async (req, res) => {
@@ -162,6 +181,10 @@ const updateProfile = async (req, res) => {
       }
     }
 
+    if (req.file) {
+      user.profileImage = `/uploads/avatars/${req.file.filename}`;
+    }
+
     await user.save();
 
     return res.status(200).json({
@@ -174,6 +197,7 @@ const updateProfile = async (req, res) => {
         mobile: user.mobile,
         role: user.role,
         isActive: user.isActive,
+        profileImage: user.profileImage || null,
         updatedAt: user.updatedAt
       }
     });
@@ -230,9 +254,8 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Hash and save new password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    // Save new password (pre-save hook will hash it)
+    user.password = newPassword;
     await user.save();
 
     return res.status(200).json({
@@ -247,9 +270,84 @@ const changePassword = async (req, res) => {
   }
 };
 
+// @desc    Register or update user FCM Token
+// @route   POST /api/auth/fcm-token
+// @access  Private
+const registerFCMToken = async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'FCM token is required' });
+    }
+
+    const userId = req.user._id;
+
+    // Remove token from any other users if device switched
+    await User.updateMany(
+      { 'fcmTokens.token': token, _id: { $ne: userId } },
+      { $pull: { fcmTokens: { token } } }
+    );
+
+    // Update current user
+    const user = await User.findById(userId);
+    const existingIndex = user.fcmTokens.findIndex((t) => t.token === token);
+
+    if (existingIndex > -1) {
+      user.fcmTokens[existingIndex].platform = platform || user.fcmTokens[existingIndex].platform;
+      user.fcmTokens[existingIndex].updatedAt = new Date();
+    } else {
+      user.fcmTokens.push({
+        token,
+        platform: platform || 'android',
+        updatedAt: new Date(),
+      });
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'FCM Token registered successfully',
+    });
+  } catch (error) {
+    console.error('registerFCMToken error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to register FCM token: ' + error.message,
+    });
+  }
+};
+
+// @desc    Remove FCM token on logout
+// @route   POST /api/auth/fcm-token/remove
+// @access  Private
+const removeFCMToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (token) {
+      await User.findByIdAndUpdate(req.user._id, {
+        $pull: { fcmTokens: { token } },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'FCM Token removed successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to remove FCM token: ' + error.message,
+    });
+  }
+};
+
 module.exports = {
   login,
   getMe,
   updateProfile,
-  changePassword
+  changePassword,
+  registerFCMToken,
+  removeFCMToken,
 };
+

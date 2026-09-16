@@ -1,5 +1,6 @@
 node_modules/
 .env
+src/config/firebase-service-account.json
 uploads/
 .vercel/
 npm-debug.log*

@@ -1,59 +1,34 @@
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getMessaging } = require('firebase-admin/messaging');
-const path = require('path');
-const fs = require('fs');
 
 let firebaseApp = null;
 let messaging = null;
 
+const serviceAccount = {
+  type: "service_account",
+  project_id: "device-streaming-3d1aacd5",
+  private_key_id: "0866f0697585e0c35f69b8a139bd7660d887ccda",
+  private_key: Buffer.from("LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRREdRVE9FUG1NdE9HV1kKNG1IYzVoT2ZWdVlmRmRTOWF0Q2w5RTZLTHo3TE43aTZtR0ZnZXZWYWlDY0tPZm1taTUxWmE3Vjk0VVlocDBzZwpEd1hqOGVDdHJsREtMNnZXaXpmajNOMTNzY0cyTG5Eb1ZUT3BUWFcycFd0MCtJU0VLSGFlODZ3c3lDd0loQTU3Cm5MSXBhWVM2Mkhqc211dGdnbWF4Q05sd0dMUXI1RHc3eUl3UDdXMnMrVG40WGtFKzhQMXJOU0dPRFlua2YrbkUKVVdnSGFkWGpkRDRFV2dMNWxHdU5TVW9IWHpHOS9JVklqbGxSRHVRbEN1RFUrdjNRUHJYS2pxVC9zZTlmN05TUQozMEI1cWw0L2Z0VWZSQUJ6UGNLZk9XVVE1QktndkR5RWw4SFkvNElhS3RFVSt3QnNCdThjOHFjc082TWxjTXJTCmE1dmtSSk1EQWdNQkFBRUNnZ0VBQWc0NEFnV0JrcnowZExiWUsrbW94MnludXlmSFNtVjZuMVhlb0prbnpnU1kKWWpybE81SmF5K01BZ0o4a1F3Rk1rdHBHaWZVVmZKRFcreENjejRXNC9pUUNDMjZlR2YzY2lQekh3UTl6UWpmTwpET0toUS82ZEcxVXd2WWc4RzRDdDVpMEJtbjlDMFozSTVxZ3p3ckVvNHFVTzcra1ZTcTFmY2pOMHliQS80ZnFaCm9lVldUQm9ueEc0MjdmeFF4akZHb3Nydm1ZZXZUemtQQUxtdHBYdnZ1QjN1NGFobEpadzdoaDNOZnNDUjZ0QWsKdWNMVThSK0NyQkNZZ3p6LzJ2Q0lybjZoVGdMemttQi9aR3ZCREd5c2NGeXd0UTBGdkc1ZnZQN1BEYVFTUENtZAp2V1RvRFQ1WjhKVU5IT3VBeTl3dHBSNEhFNWhhSDh0Q2poV2s1SWdSMVFLQmdRRDMwSDErRDVFeTVHYTRxenJLCnZtQTF4dndOZ2htWWR0WGRjcWRyc2hoM0JSNDJpU29qWE5pZVZUMHdaWWgxZVNKWnFHeFEwUmc4WnBramNLdFoKUjkwWlRrNll2YjV0NHdZRHpYQzFEKzdzaUFFdFR5ZjB6aFZCR0g5NDVlaFZtWUc3WkFnYXcxT0Y1aDIyWWFLWQpZWDZLamZGa3hXWUFNR1p4a25jeWtGMDFwUUtCZ1FETXphTERuZHZPMEIwemJYSkxMRmYwb3hET2pMR0I4aVFICmdMQndUM0p5b0s0d1V2V05HanhwRDV5NnE4eFBudzkzTXdyNW9xUnB2WmNDTmZkeTB6VWNBTyt3RnVmTGxWMHoKZ0lFRVNCNDBHdWRPbnd1OHUrajF6VmxFdVBoaytEYjJTck9uQnpRY1FIeThoa2UvZjRYQThGUkNXdjV1V0l1aApSR2FURkovVmh3S0JnRmVPUnpocDRhQThpSHFJclE0QzgxVXN4OU14K3o4ZUJYUG5WWFc4aDk1TlpaNVpHaFZDCmNacUhmVVlES1pKdnlRNHFicEtqUGMvaFpBdmNlLzNnWVNMV3d2ZytXZkRUUEVYTnFSdWYxSWVuaWRyclU2K3YKdkZ5eWZoOUdBNjl5dkI1c09selNWRWxEdzQyenMxSHBhRjhseFhzWUwzQ3pxUTVKZEduZURjQ3RBb0dCQUxFeApvWWRhQnhteVdmRnEyaDVNS1hWUnVITGNxNS9nWG1mWFlkQnFESDA4cERqUExnQjlHSk5WbkthdGlVSENQdUZFCjJsUU44ZTVDeUdwelFycW9IaVV5Y2k2S1F0YVRUbVlHNHBsUHhFSVVuTmdiSjA2Tnpnc05OaFVOYkd2L2paNGUKRjcyRnNBSlprUktUbzNQOTR6MkJNWVdQc043TDRWTVFHU2RjQ3NYMUFvR0FPWC8wbE1CNGJmVWVlWm5QMTR4bwpsMnhwQzQ1cmRiN2N6N09JaVNNR3F3bThYeVB0UFVBRjR2Zm45TmxpM013eHNIcGJRS1h1b0tmaEQ3aUtOaXYxCnlxOTl5eXkya0s0bkpLOU83OGcxWjJpSmNJVW5zRy85dUpESjFNN3NHb2J2bkEwMzJtcHBIMElGc21FUlJ4NlMKYlp4YzlxbFg0anB3UlFTNHZ2b1hKbTA9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K", "base64").toString('utf8'),
+  client_email: "firebase-adminsdk-fbsvc@device-streaming-3d1aacd5.iam.gserviceaccount.com",
+  client_id: "100357616817694550007",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token",
+  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40device-streaming-3d1aacd5.iam.gserviceaccount.com",
+  universe_domain: "googleapis.com"
+};
+
 try {
-  let serviceAccount = null;
-
-  // 1. First priority: Environment variable (Render / Production best practice)
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      const raw = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-      if (raw.startsWith('{')) {
-        serviceAccount = JSON.parse(raw);
-      } else {
-        // Support base64 encoded JSON string to prevent newline issues in .env
-        const decoded = Buffer.from(raw, 'base64').toString('utf8');
-        serviceAccount = JSON.parse(decoded);
-      }
-      console.log('✅ Firebase Service Account loaded from environment variable');
-    } catch (envErr) {
-      console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT from .env:', envErr.message);
-    }
+  const existingApps = getApps();
+  if (existingApps.length === 0) {
+    firebaseApp = initializeApp({
+      credential: cert(serviceAccount),
+    });
+  } else {
+    firebaseApp = existingApps[0];
   }
-
-  // 2. Second priority: Local file fallback
-  if (!serviceAccount) {
-    const serviceAccountPath = path.join(__dirname, 'firebase-service-account.json');
-    if (fs.existsSync(serviceAccountPath)) {
-      serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-      console.log('✅ Firebase Service Account loaded from local file');
-    } else {
-      console.warn('⚠️ Firebase service account file not found at:', serviceAccountPath);
-    }
-  }
-
-  if (serviceAccount) {
-    // Fix escaped newlines in private_key if present
-    if (serviceAccount.private_key && serviceAccount.private_key.includes('\\n')) {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    }
-
-    const existingApps = getApps();
-    if (existingApps.length === 0) {
-      firebaseApp = initializeApp({
-        credential: cert(serviceAccount),
-      });
-    } else {
-      firebaseApp = existingApps[0];
-    }
-    messaging = getMessaging(firebaseApp);
-    console.log('✅ Firebase Admin SDK initialized successfully for FCM notifications');
-  }
+  messaging = getMessaging(firebaseApp);
+  console.log('✅ Firebase Admin SDK initialized successfully for FCM notifications');
 } catch (error) {
   console.error('❌ Firebase Admin SDK initialization error:', error.message);
 }

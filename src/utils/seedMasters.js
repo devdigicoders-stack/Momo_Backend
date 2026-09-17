@@ -3,93 +3,56 @@ const MomoType = require('../models/MomoType');
 
 const seedMasters = async () => {
   try {
-    // 1. Seed Expense Categories
-    const categoryCount = await ExpenseCategory.countDocuments();
-    if (categoryCount === 0) {
-      const defaultCategories = [
-        {
-          name: 'Raw Material',
-          subcategories: [
-            { name: 'Vegetables', isActive: true },
-            { name: 'Paneer', isActive: true },
-            { name: 'Flour / Maida', isActive: true },
-            { name: 'Oil & Spices', isActive: true },
-            { name: 'Sauces & Condiments', isActive: true },
-          ],
-        },
-        {
-          name: 'Staff',
-          subcategories: [
-            { name: 'Daily Wages', isActive: true },
-            { name: 'Temporary Staff', isActive: true },
-            { name: 'Staff Meal', isActive: true },
-          ],
-        },
-        {
-          name: 'Utility',
-          subcategories: [
-            { name: 'Electricity', isActive: true },
-            { name: 'Commercial Gas Cylinder', isActive: true },
-            { name: 'Water Supply', isActive: true },
-          ],
-        },
-        {
-          name: 'Rent & Space',
-          subcategories: [
-            { name: 'Outlet Rent', isActive: true },
-            { name: 'Storage Godown', isActive: true },
-          ],
-        },
-        {
-          name: 'Transport & Logistics',
-          subcategories: [
-            { name: 'Auto / Rickshaw Delivery', isActive: true },
-            { name: 'Fuel', isActive: true },
-          ],
-        },
-        {
-          name: 'Maintenance & Repairs',
-          subcategories: [
-            { name: 'Steamer / Stove Repair', isActive: true },
-            { name: 'Electrical & Plumbing', isActive: true },
-            { name: 'Cleaning & Sanitation', isActive: true },
-          ],
-        },
-        {
-          name: 'Marketing & Printing',
-          subcategories: [
-            { name: 'Menu Pamphlets', isActive: true },
-            { name: 'Banners & Signage', isActive: true },
-          ],
-        },
-        {
-          name: 'Other',
-          subcategories: [
-            { name: 'Packaging Materials', isActive: true },
-            { name: 'Miscellaneous', isActive: true },
-          ],
-        },
-      ];
+    // 1. Seed Expense Categories (Groceries, Disposable, Vegetables, Cream and Chaap, Colddrinks, Water, Dairy, Roomali Roti, Cylinder, Staff Expenses, Petrol, Utility Bills, Maintenance & Repairs, Others)
+    const requiredCategories = [
+      'Groceries',
+      'Disposable',
+      'Vegetables',
+      'Cream and Chaap',
+      'Colddrinks',
+      'Water',
+      'Dairy',
+      'Roomali Roti',
+      'Cylinder',
+      'Staff Expenses',
+      'Petrol',
+      'Utility Bills',
+      'Maintenance & Repairs',
+      'Others',
+    ];
 
-      await ExpenseCategory.insertMany(defaultCategories);
-      console.log('✅ Default Expense Categories seeded successfully');
+    for (const catName of requiredCategories) {
+      await ExpenseCategory.findOneAndUpdate(
+        { name: { $regex: new RegExp(`^${catName}$`, 'i') } },
+        { $setOnInsert: { name: catName, isActive: true, subcategories: [] } },
+        { upsert: true, new: true }
+      );
     }
+    console.log('✅ Default Expense Categories synced successfully');
 
-    // 2. Seed Momo Types
-    const momoTypeCount = await MomoType.countDocuments();
-    if (momoTypeCount === 0) {
-      const defaultMomoTypes = [
-        { name: 'Veg Momo', defaultRate: 25 },
-        { name: 'Paneer Momo', defaultRate: 35 },
-        { name: 'Chicken Momo', defaultRate: 40 },
-        { name: 'Corn Cheese Momo', defaultRate: 45 },
-        { name: 'Kurkure Momo', defaultRate: 50 },
-        { name: 'Special Gravy Momo', defaultRate: 60 },
-      ];
+    // 2. Seed Momo Types (Veg: 5.00, Paneer: 6.67, Butter Cheese Sweetcorn: 7.50, Chaap: 7.50, Mushroom: 8.33)
+    const defaultMomoTypes = [
+      { name: 'Veg', defaultRate: 5.00 },
+      { name: 'Paneer', defaultRate: 6.67 },
+      { name: 'Butter Cheese Sweetcorn', defaultRate: 7.50 },
+      { name: 'Chaap', defaultRate: 7.50 },
+      { name: 'Mushroom', defaultRate: 8.33 },
+    ];
 
-      await MomoType.insertMany(defaultMomoTypes);
-      console.log('✅ Default Momo Types seeded successfully');
+    const allowedNames = defaultMomoTypes.map((m) => m.name);
+    // Delete any momo types not in the allowed 5 list
+    await MomoType.deleteMany({
+      name: { $nin: allowedNames.map((n) => new RegExp(`^${n}$`, 'i')) },
+    });
+
+    for (const mt of defaultMomoTypes) {
+      await MomoType.findOneAndUpdate(
+        { name: { $regex: new RegExp(`^${mt.name}$`, 'i') } },
+        { $set: { name: mt.name, defaultRate: mt.defaultRate, isActive: true } },
+        { upsert: true, new: true }
+      );
     }
+    console.log('✅ Default Momo Types strictly synced (5 varieties)');
   } catch (error) {
     console.error('Error seeding masters:', error);
   }

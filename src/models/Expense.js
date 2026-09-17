@@ -19,8 +19,8 @@ const expenseSchema = new mongoose.Schema(
     },
     item: {
       type: String,
-      required: [true, 'Item or description is required'],
       trim: true,
+      default: '',
     },
     amount: {
       type: Number,
@@ -31,7 +31,7 @@ const expenseSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Payment mode is required'],
       enum: {
-        values: ['Cash', 'UPI', 'Card', 'Net Banking', 'Canara / Bank', 'Paytm', 'PhonePe', 'Other'],
+        values: ['Cash', 'Online', 'UPI', 'Card', 'Net Banking', 'Canara / Bank', 'Paytm', 'PhonePe', 'Other'],
         message: '{VALUE} is not a valid payment mode',
       },
       default: 'Cash',

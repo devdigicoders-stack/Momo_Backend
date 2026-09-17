@@ -4,12 +4,32 @@ const { generateEntryCode } = require('../utils/entryCode');
 const { logAudit } = require('../utils/auditLogger');
 const { validateDateAccess, apply45DayQueryLimit } = require('../middleware/accessControl.middleware');
 
-// @desc    Create a new Sales entry
+// @desc    Create a new Sales entry (supports breakdown: Cash, Canara, Paytm, PhonePe, Others or single entry)
 // @route   POST /api/sales
 // @access  Private (SUPER_ADMIN, MAIN_MANAGER)
 exports.createSales = async (req, res) => {
   try {
-    const { date, amount, paymentMode, remarks } = req.body;
+    const {
+      date,
+      amount,
+      paymentMode,
+      remarks,
+      cash,
+      cashAmount,
+      canara,
+      canaraBank,
+      canaraBankAmount,
+      paytm,
+      paytmAmount,
+      phonePe,
+      phonepe,
+      phonePeAmount,
+      other,
+      others,
+      otherAmount,
+      breakdown,
+      customModes,
+    } = req.body;
 
     const targetDate = date || Date.now();
 
@@ -26,6 +46,75 @@ exports.createSales = async (req, res) => {
       });
     }
 
+    // Check if breakdown values are provided
+    const breakdownMap = [];
+
+    const cashVal = Number(cash !== undefined ? cash : (cashAmount !== undefined ? cashAmount : (breakdown?.Cash ?? breakdown?.cash ?? 0)));
+    if (!isNaN(cashVal) && cashVal > 0) {
+      breakdownMap.push({ mode: 'Cash', amount: cashVal });
+    }
+
+    const canaraVal = Number(canara !== undefined ? canara : (canaraBank !== undefined ? canaraBank : (canaraBankAmount !== undefined ? canaraBankAmount : (breakdown?.['Canara / Bank'] ?? breakdown?.canara ?? breakdown?.Canara ?? 0))));
+    if (!isNaN(canaraVal) && canaraVal > 0) {
+      breakdownMap.push({ mode: 'Canara / Bank', amount: canaraVal });
+    }
+
+    const paytmVal = Number(paytm !== undefined ? paytm : (paytmAmount !== undefined ? paytmAmount : (breakdown?.Paytm ?? breakdown?.paytm ?? 0)));
+    if (!isNaN(paytmVal) && paytmVal > 0) {
+      breakdownMap.push({ mode: 'Paytm', amount: paytmVal });
+    }
+
+    const phonePeVal = Number(phonePe !== undefined ? phonePe : (phonepe !== undefined ? phonepe : (phonePeAmount !== undefined ? phonePeAmount : (breakdown?.PhonePe ?? breakdown?.phonePe ?? 0))));
+    if (!isNaN(phonePeVal) && phonePeVal > 0) {
+      breakdownMap.push({ mode: 'PhonePe', amount: phonePeVal });
+    }
+
+    const otherVal = Number(other !== undefined ? other : (others !== undefined ? others : (otherAmount !== undefined ? otherAmount : (breakdown?.Other ?? breakdown?.other ?? breakdown?.Others ?? 0))));
+    if (!isNaN(otherVal) && otherVal > 0) {
+      breakdownMap.push({ mode: 'Other', amount: otherVal });
+    }
+
+    if (Array.isArray(customModes)) {
+      for (const cm of customModes) {
+        const val = Number(cm.amount);
+        if (!isNaN(val) && val > 0) {
+          breakdownMap.push({ mode: cm.name || 'Other', amount: val });
+        }
+      }
+    }
+
+    // If multiple breakdown items provided, create entries for all non-zero modes
+    if (breakdownMap.length > 0) {
+      const createdEntries = [];
+      for (const item of breakdownMap) {
+        const entryCode = generateEntryCode('SAL', targetDate);
+        const newSale = await Sales.create({
+          date: targetDate,
+          amount: item.amount,
+          paymentMode: item.mode,
+          remarks: remarks || '',
+          enteredBy: req.user._id,
+          entryCode,
+        });
+        createdEntries.push(newSale);
+      }
+
+      const totalCollection = breakdownMap.reduce((acc, curr) => acc + curr.amount, 0);
+
+      const populatedFirst = await Sales.findById(createdEntries[0]._id).populate(
+        'enteredBy',
+        'name email mobile role'
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: `Sales recorded successfully! Total Collection: ₹${totalCollection.toLocaleString('en-IN')}`,
+        data: populatedFirst,
+        entries: createdEntries,
+      });
+    }
+
+    // Otherwise, single mode creation fallback
     const numAmount = Number(amount);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
       return res.status(400).json({

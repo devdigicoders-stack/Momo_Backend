@@ -34,11 +34,6 @@ const momoPurchaseSchema = new mongoose.Schema(
     },
     paymentMode: {
       type: String,
-      required: [true, 'Payment mode is required'],
-      enum: {
-        values: ['Cash', 'UPI', 'Card', 'Net Banking', 'Canara / Bank', 'Paytm', 'PhonePe', 'Other'],
-        message: '{VALUE} is not a valid payment mode',
-      },
       default: 'Cash',
     },
     remarks: {

@@ -50,7 +50,9 @@ exports.createMomoPurchase = async (req, res) => {
       itemRate = 0;
     }
 
-    const calculatedTotal = qty * itemRate;
+    // Payment Quantity Rule: Pay for 90% of total momo quantity (e.g. 1,000 momos -> 900 momos)
+    const payableQuantity = qty * 0.90;
+    const calculatedTotal = Number((payableQuantity * itemRate).toFixed(2));
 
     // Duplicate submission guard (within 5 seconds)
     const fiveSecondsAgo = new Date(Date.now() - 5000);
@@ -77,7 +79,7 @@ exports.createMomoPurchase = async (req, res) => {
       rate: itemRate,
       totalAmount: calculatedTotal,
       supplierName: supplierName ? supplierName.trim() : '',
-      paymentMode: paymentMode || 'Cash',
+      paymentMode: paymentMode ? paymentMode.trim() : 'Cash',
       remarks: remarks || '',
       enteredBy: req.user._id,
       entryCode,
@@ -259,7 +261,7 @@ exports.updateMomoPurchase = async (req, res) => {
     if (quantity !== undefined || rate !== undefined) {
       const q = quantity !== undefined ? Number(quantity) : purchase.quantity;
       const r = rate !== undefined ? Number(rate) : purchase.rate;
-      purchase.totalAmount = totalAmount ? Number(totalAmount) : q * r;
+      purchase.totalAmount = totalAmount ? Number(totalAmount) : Number(((q * 0.90) * r).toFixed(2));
     } else if (totalAmount !== undefined) {
       purchase.totalAmount = Number(totalAmount);
     }

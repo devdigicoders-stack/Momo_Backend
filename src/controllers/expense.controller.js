@@ -36,12 +36,7 @@ exports.createExpense = async (req, res) => {
       });
     }
 
-    if (!item || !item.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Item or description is required',
-      });
-    }
+    const finalItem = (item && item.trim()) ? item.trim() : category.trim();
 
     const numAmount = Number(amount);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
@@ -63,7 +58,6 @@ exports.createExpense = async (req, res) => {
     const duplicate = await Expense.findOne({
       enteredBy: req.user._id,
       category: category.trim(),
-      item: item.trim(),
       amount: numAmount,
       createdAt: { $gte: fiveSecondsAgo },
     });
@@ -86,7 +80,7 @@ exports.createExpense = async (req, res) => {
       date: targetDate,
       category: category.trim(),
       subcategory: subcategory ? subcategory.trim() : '',
-      item: item.trim(),
+      item: finalItem,
       amount: numAmount,
       paymentMode: paymentMode.trim(),
       bill: billPath,
